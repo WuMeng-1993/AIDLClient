@@ -19,6 +19,22 @@ public class Book implements Parcelable {
         BookId = bookId;
     }
 
+    public String getBookName() {
+        return BookName;
+    }
+
+    public void setBookName(String bookName) {
+        BookName = bookName;
+    }
+
+    public int getBookId() {
+        return BookId;
+    }
+
+    public void setBookId(int bookId) {
+        BookId = bookId;
+    }
+
     public Book() {
     }
 

@@ -6,7 +6,10 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
 import android.os.RemoteException;
 import android.util.Log;
 import android.view.View;
@@ -14,6 +17,7 @@ import android.widget.Button;
 
 import com.wm.aidlservice.Book;
 import com.wm.aidlservice.IBookManager;
+import com.wm.aidlservice.IOnNewBookArrivedListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +38,24 @@ public class MainActivity extends AppCompatActivity {
 
     private IBookManager bookManager;
 
+    /**
+     * 图书列表
+     */
     private List<Book> bookList = new ArrayList<>();
+
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
+
+    private final IOnNewBookArrivedListener listener = new IOnNewBookArrivedListener.Stub() {
+        @Override
+        public void onNewBookArrived(Book newBook) throws RemoteException {
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Log.d(TAG,"接收到图书"+newBook.getBookName());
+                }
+            });
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,7 +63,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         initView();
         initClick();
-
     }
 
     /**
@@ -98,6 +118,12 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "service connected");
             isConnect = true;
             bookManager = IBookManager.Stub.asInterface(service);
+            try {
+                bookManager.registerListener(listener);
+                Log.d(TAG,"开始注册");
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
         }
 
         @Override
@@ -117,12 +143,18 @@ public class MainActivity extends AppCompatActivity {
         bindService(intent, serviceConnection, BIND_AUTO_CREATE);
     }
 
+
     @Override
-    protected void onStop() {
-        super.onStop();
-        if (isConnect) {
-            unbindService(serviceConnection);
-            isConnect = false;
+    protected void onDestroy() {
+        super.onDestroy();
+        if (isConnect && bookManager != null && bookManager.asBinder().isBinderAlive()) {
+            try {
+                bookManager.unregisterListener(listener);
+                unbindService(serviceConnection);
+                isConnect = false;
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
         }
     }
 }
