@@ -31,12 +31,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Button btnAddBook, btnGetBookList;
 
-    /**
-     * 是否连接Service
-     */
-    private boolean isConnect = false;
-
-    private IBookManager bookManager;
+    private IBookManager mRemoteBookManager;
 
     /**
      * 图书列表
@@ -82,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 try {
-                    bookList = bookManager.getBookList();
+                    bookList = mRemoteBookManager.getBookList();
                     Log.d(TAG, "bookList is " + bookList.toString());
                 } catch (RemoteException e) {
                     e.printStackTrace();
@@ -96,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Book book = new Book("第二行代码",90909);
                 try {
-                    bookManager.addBook(book);
+                    mRemoteBookManager.addBook(book);
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }
@@ -107,18 +102,26 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        if (!isConnect) {
-            attemptToBindService();
-        }
+        attemptToBindService();
     }
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             Log.d(TAG, "service connected");
-            isConnect = true;
-            bookManager = IBookManager.Stub.asInterface(service);
+            IBookManager bookManager = IBookManager.Stub.asInterface(service);
             try {
+                mRemoteBookManager = bookManager;
+                List<Book> list = mRemoteBookManager.getBookList();
+                Log.d(TAG,"list的长度为" + list.size());
+
+                Book book = new Book("一本新书",3);
+                mRemoteBookManager.addBook(book);
+                Log.d(TAG,"添加一本新书");
+
+                List<Book> newList = mRemoteBookManager.getBookList();
+                Log.d(TAG,"新的List的长度为"+newList.size());
+
                 bookManager.registerListener(listener);
                 Log.d(TAG,"开始注册");
             } catch (RemoteException e) {
@@ -128,8 +131,8 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            mRemoteBookManager = null;
             Log.d(TAG,"service disconnected");
-            isConnect = false;
         }
     };
 
@@ -147,11 +150,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (isConnect && bookManager != null && bookManager.asBinder().isBinderAlive()) {
+        if (mRemoteBookManager != null && mRemoteBookManager.asBinder().isBinderAlive()) {
             try {
-                bookManager.unregisterListener(listener);
-                unbindService(serviceConnection);
-                isConnect = false;
+                Log.d(TAG,"开始解注册");
+                mRemoteBookManager.unregisterListener(listener);
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
