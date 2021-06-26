@@ -43,10 +43,12 @@ public class MainActivity extends AppCompatActivity {
     private final IOnNewBookArrivedListener listener = new IOnNewBookArrivedListener.Stub() {
         @Override
         public void onNewBookArrived(Book newBook) throws RemoteException {
+            Log.d(TAG,"当前线程为 " + Thread.currentThread().getName());
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
                     Log.d(TAG,"接收到图书"+newBook.getBookName());
+                    Log.d(TAG,"当前线程为 " + Thread.currentThread().getName());
                 }
             });
         }
